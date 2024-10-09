@@ -1,0 +1,45 @@
+image: docker:latest
+
+services:
+  - docker:dind
+
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  DOCKER_REGISTRY: $CI_REGISTRY
+  DOCKER_REGISTRY_URL: $DOCKER_REGISTRY/$CI_PROJECT_NAME
+  TAG: $CI_COMMIT_SHA
+
+build:
+  stage: build
+  script:
+    - docker build -t $DOCKER_REGISTRY_URL/web-service -f ./web-service/Dockerfile ./web-service
+    - docker build -t $DOCKER_REGISTRY_URL/database-service -f ./database-service/Dockerfile ./database-service
+    - docker build -t $DOCKER_REGISTRY_URL/cache-service -f ./cache-service/Dockerfile ./cache-service
+    - docker push $DOCKER_REGISTRY_URL/web-service:$TAG
+    - docker push $DOCKER_REGISTRY_URL/database-service:$TAG
+    - docker push $DOCKER_REGISTRY_URL/cache-service:$TAG
+  only:
+    - main
+
+test:
+  stage: test
+  script:
+    - docker-compose -f ./docker-compose.yml up -d
+    - docker exec -it $DOCKER_REGISTRY_URL/web-service-$TAG npm run test
+  depends_on:
+    - build
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  script:
+    - docker-compose -f ./docker-compose.yml up -d
+  depends_on:
+    - test
+  only:
+    - main

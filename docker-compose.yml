@@ -1,0 +1,43 @@
+services:
+  web:
+    build: ./web-service
+    ports:
+      - "3000:3000"
+    depends_on:
+      - database
+      - cache
+    networks:
+      - app-network
+    environment:
+      - DATABASE_HOST=database
+      - CACHE_HOST=cache
+    user: nodeuser
+
+  database:
+    build: ./database-service
+    environment:
+      - POSTGRES_USER=clientuser
+      - POSTGRES_PASSWORD=clientpassword
+      - POSTGRES_DB=clientdb
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    user: postgresuser
+
+  cache:
+    build: ./cache-service
+    networks:
+      - app-network
+    ports:
+    - "6379:6379"
+    user: redisuser
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  db-data:
